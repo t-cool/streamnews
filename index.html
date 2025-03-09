@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>英語学習YouTubeプレーヤー</title>
   <style>
     body {
@@ -135,9 +135,8 @@
     </div>
   </div>
 
-  <!-- YouTube APIの読み込み方法を修正 -->
+  <!-- YouTube APIの動的読み込み -->
   <script>
-    // YouTube APIを動的に読み込む
     var tag = document.createElement('script');
     tag.src = "https://www.youtube.com/iframe_api";
     var firstScriptTag = document.getElementsByTagName('script')[0];
@@ -145,7 +144,7 @@
   </script>
   
   <script>
-    // デバッグ用のログ関数
+    // デバッグログ用関数
     function log(message) {
       const debugInfo = document.getElementById('debugInfo');
       const timestamp = new Date().toLocaleTimeString();
@@ -154,7 +153,6 @@
       console.log(`[${timestamp}] ${message}`);
     }
     
-    // YouTubeプレーヤーの変数を初期化
     let player = null;
     let playerReady = false;
     let timer;
@@ -162,57 +160,57 @@
     let remainingTime = 0;
     let countdownInterval;
     
-    // カテゴリー別の動画ID
+    // ===== ここで "再生可能なID" に置き換える ===================
     const videoLibrary = {
       pronunciation: [
-        {id: 'QxQUapA-2w4', title: 'English Pronunciation Training'},
-        {id: 'A7L8zY9Z4c0', title: 'Difficult English Sounds'},
-        {id: 'VkIgJQdXVZ0', title: 'Tongue Twisters Practice'}
+        { id: '0XT04EO5RSU', title: 'English Pronunciation Practice (Example 1)' },
+        { id: 'mQS0Ho-oKw8', title: 'English Pronunciation Practice (Example 2)' },
+        { id: '1tk_r-STeiE', title: 'English Pronunciation Practice (Example 3)' }
       ],
       conversation: [
-        {id: 'hj0vSvnCRCc', title: 'Basic English Conversations'},
-        {id: 'zmR_Fuq4XxI', title: 'Real Life English Dialogues'},
-        {id: 'vmxUYzpbFfE', title: 'Travel English Phrases'}
+        { id: 'R3c78Qy34DA', title: 'Everyday Conversation (Example 1)' },
+        { id: 'Vp7JPB9WS44', title: 'Everyday Conversation (Example 2)' },
+        { id: '3KUE0BZFS2A', title: 'Travel English Conversation' }
       ],
       business: [
-        {id: 'l5iXPr0g8rQ', title: 'Business Meeting Vocabulary'},
-        {id: 'puNo0sxC3XI', title: 'Email Writing Tips'},
-        {id: 'xmqFbbZs82M', title: 'Job Interview English'}
+        { id: 'q6yRjTn4G6A', title: 'Business English Basics' },
+        { id: 'MYGqf6gGtF4', title: 'Email Writing in English' },
+        { id: '3u0ZcYxT2T0', title: 'Business Meeting Phrases' }
       ],
       news: [
-        {id: 'wLuNOWXw96c', title: 'CNN News Report'},
-        {id: 'NC1Bw-Kb9D0', title: 'BBC Learning English'},
-        {id: 'PsR9ko4QZfA', title: 'VOA Learning English'}
+        { id: 'AJy67az3G2w', title: 'News English (Example 1)' },
+        { id: 'CSkYdXCyvMI', title: 'BBC Learning English (Example)' },
+        { id: '8GBZ37X6HCk', title: 'CNN News Listening Practice' }
       ],
       songs: [
-        {id: 'ZbZSe6N_BXs', title: 'Happy - Pharrell Williams'},
-        {id: 'hT_nvWreIhg', title: 'Counting Stars - OneRepublic'},
-        {id: 'VDvr08sCPOc', title: 'Remember Me - Coco Soundtrack'}
+        { id: 'XEL65gxNqwo', title: '簡単な英語ソング Example 1' },
+        { id: 'tcJ7yiy7nxo', title: '簡単な英語ソング Example 2' },
+        { id: 'Nh7YSDi9heQ', title: 'Child Song in English' }
       ]
     };
+    // ==========================================================
     
-    // YouTube Player APIのコールバック - APIが読み込まれたら自動的に呼ばれる
+    // IFrame API が読み込まれたときに呼ばれるコールバック
     function onYouTubeIframeAPIReady() {
-      log("YouTube IFrame API が準備完了しました");
-      
-      // プレーヤーを初期化
+      log("YouTube IFrame API が準備完了");
       initializePlayer();
     }
     
-    // プレーヤーを初期化する関数
+    // プレーヤー初期化
     function initializePlayer() {
-      log("プレーヤーを初期化しています...");
-      
+      log("プレーヤーを初期化します...");
       try {
         player = new YT.Player('player', {
           height: '390',
           width: '640',
-          videoId: videoLibrary.pronunciation[0].id, // 初期動画を設定
+          videoId: videoLibrary.pronunciation[0].id,
           playerVars: {
-            'playsinline': 1,
-            'controls': 1,
-            'rel': 0,
-            'autoplay': 0
+            playsinline: 1,
+            controls: 1,
+            rel: 0,
+            autoplay: 0,
+            origin: location.origin,    // 追加：埋め込み先のオリジンを明示
+            enablejsapi: 1             // 追加：JS API有効
           },
           events: {
             'onReady': onPlayerReady,
@@ -220,38 +218,35 @@
             'onError': onPlayerError
           }
         });
-        
-        log("プレーヤーオブジェクトを作成しました");
+        log("プレーヤーオブジェクトを生成しました");
       } catch (error) {
         log(`プレーヤー初期化エラー: ${error.message}`);
-        setTimeout(initializePlayer, 2000); // 2秒後に再試行
+        // 失敗した場合、2秒後に再試行
+        setTimeout(initializePlayer, 2000);
       }
     }
     
-    // プレーヤーの準備ができたとき
     function onPlayerReady(event) {
       log("プレーヤーの準備ができました");
       playerReady = true;
-      
-      // 動画をロードするだけで再生はしない
       try {
+        // 最初の動画は cueVideoById でロードしておく
         player.cueVideoById(videoLibrary.pronunciation[0].id);
         document.getElementById('currentVideoTitle').textContent = videoLibrary.pronunciation[0].title;
-        document.getElementById('statusMessage').textContent = "準備完了！開始ボタンを押して学習を始めましょう。";
+        document.getElementById('statusMessage').textContent = "準備完了！「開始」ボタンを押してください。";
       } catch (error) {
         log(`動画キュー中エラー: ${error.message}`);
       }
     }
     
-    // エラーハンドラー
     function onPlayerError(event) {
       log(`プレーヤーエラー: ${event.data}`);
-      document.getElementById('statusMessage').textContent = `エラーが発生しました(コード: ${event.data})。別の動画を試します。`;
-      // エラーが発生したら別の動画を試す
+      document.getElementById('statusMessage').textContent 
+        = `エラーが発生しました(コード: ${event.data})。別の動画を試します。`;
+      // 一定時間後に次の動画を試す
       setTimeout(playNextVideo, 2000);
     }
     
-    // プレーヤーの状態が変わったとき
     function onPlayerStateChange(event) {
       const states = {
         '-1': '未開始',
@@ -261,56 +256,49 @@
         '3': 'バッファリング中',
         '5': 'キュー済み'
       };
-      log(`プレーヤーの状態が変更: ${states[event.data] || event.data}`);
-      
-      // 動画が終了したとき、次の動画を再生
+      log(`プレーヤーの状態が変わりました: ${states[event.data] || event.data}`);
+      // 動画が終了したら次の動画へ
       if (event.data === YT.PlayerState.ENDED) {
         playNextVideo();
       }
     }
     
-    // ランダム再生を開始
+    // 開始ボタン
     function startRandomPlayback() {
       if (!playerReady) {
         log("プレーヤーがまだ準備できていません");
         document.getElementById('statusMessage').textContent = "YouTubeプレーヤーの準備中です。しばらくお待ちください。";
         return;
       }
-      
       const interval = parseInt(document.getElementById('interval').value);
-      
       if (interval < 10) {
-        alert('再生間隔は最低10秒以上に設定してください。');
+        alert('再生間隔は最低10秒以上にしてください。');
         return;
       }
-      
-      // ボタンの状態を切り替え
+      // ボタン操作
       document.getElementById('startButton').disabled = true;
       document.getElementById('stopButton').disabled = false;
       document.getElementById('singleVideoButton').disabled = true;
       document.getElementById('interval').disabled = true;
       document.getElementById('videoCategory').disabled = true;
       
-      // 最初の動画を再生
-      playNextVideo();
-      
-      // ステータスメッセージを更新
+      playNextVideo(); // 最初の動画再生
       document.getElementById('statusMessage').textContent = '英語学習中...';
     }
     
-    // 再生を停止
+    // 停止ボタン
     function stopPlayback() {
       if (timer) clearTimeout(timer);
       if (countdownInterval) clearInterval(countdownInterval);
       
-      // ボタンの状態を切り替え
+      // ボタン操作
       document.getElementById('startButton').disabled = false;
       document.getElementById('stopButton').disabled = true;
       document.getElementById('singleVideoButton').disabled = false;
       document.getElementById('interval').disabled = false;
       document.getElementById('videoCategory').disabled = false;
       
-      // 動画を停止（プレーヤーが存在する場合のみ）
+      // 動画停止
       if (playerReady) {
         try {
           player.stopVideo();
@@ -319,28 +307,24 @@
         }
       }
       
-      // ステータスと表示をリセット
-      document.getElementById('statusMessage').textContent = '停止しました。「開始」ボタンで再開できます。';
+      document.getElementById('statusMessage').textContent = '停止しました。「開始」で再開できます。';
       document.getElementById('countdown').textContent = '-';
     }
     
-    // 1つの動画だけ再生
+    // 1つだけ動画を再生する
     function playSingleVideo() {
       if (!playerReady) {
         log("プレーヤーがまだ準備できていません");
         document.getElementById('statusMessage').textContent = "YouTubeプレーヤーの準備中です。しばらくお待ちください。";
         return;
       }
-      
       const category = document.getElementById('videoCategory').value;
       const videos = videoLibrary[category];
       const videoIndex = Math.floor(Math.random() * videos.length);
       const video = videos[videoIndex];
       
       log(`単一動画再生: ${video.title} (ID: ${video.id})`);
-      
       try {
-        // 動画を読み込んで再生
         player.loadVideoById(video.id);
         document.getElementById('currentVideoTitle').textContent = video.title;
         document.getElementById('statusMessage').textContent = `再生中: ${video.title}`;
@@ -350,7 +334,7 @@
       }
     }
     
-    // 次の動画を再生
+    // ランダムに次の動画を再生する
     function playNextVideo() {
       if (!playerReady) {
         log("プレーヤーがまだ準備できていません");
@@ -365,7 +349,7 @@
       const category = document.getElementById('videoCategory').value;
       const videos = videoLibrary[category];
       
-      // ランダムに動画を選択（前と同じにならないように）
+      // 前回と同じ動画が選ばれにくいように
       let newIndex;
       do {
         newIndex = Math.floor(Math.random() * videos.length);
@@ -377,52 +361,50 @@
       log(`次の動画再生: ${video.title} (ID: ${video.id})`);
       
       try {
-        // 動画を読み込んで再生
         player.loadVideoById(video.id);
         document.getElementById('currentVideoTitle').textContent = video.title;
         
-        // 次の動画のためのタイマーを設定
+        // 次の動画へ行くタイマーセット
         const interval = parseInt(document.getElementById('interval').value);
         remainingTime = interval;
         updateCountdown();
-        
         timer = setTimeout(playNextVideo, interval * 1000);
         
-        // カウントダウン表示を更新
+        // カウントダウン表示
         countdownInterval = setInterval(updateCountdown, 1000);
       } catch (error) {
         log(`動画再生エラー: ${error.message}`);
-        document.getElementById('statusMessage').textContent = "動画再生中にエラーが発生しました。再試行しています...";
+        document.getElementById('statusMessage').textContent 
+          = "動画再生中にエラーが発生しました。再試行しています...";
         setTimeout(playNextVideo, 2000);
       }
     }
     
-    // カウントダウン表示を更新
+    // カウントダウンの更新
     function updateCountdown() {
       document.getElementById('countdown').textContent = remainingTime + '秒';
       remainingTime--;
-      
       if (remainingTime < 0) {
         clearInterval(countdownInterval);
       }
     }
     
-    // ページ読み込み完了時に実行
+    // ページ読み込み時に初期セット
     document.addEventListener('DOMContentLoaded', function() {
       log("ページが読み込まれました");
       
-      // ボタンのイベントリスナーを設定
+      // ボタンにイベント割り当て
       document.getElementById('startButton').addEventListener('click', startRandomPlayback);
       document.getElementById('stopButton').addEventListener('click', stopPlayback);
       document.getElementById('singleVideoButton').addEventListener('click', playSingleVideo);
       
-      // YouTube API が既に読み込まれているか確認
+      // YouTube API が既に読み込まれているかどうか
       if (typeof YT !== 'undefined' && YT.Player) {
-        log("YouTube API は既に読み込まれています");
+        log("YouTube API はすでに読み込まれています");
         initializePlayer();
       } else {
-        log("YouTube API の読み込みを待っています...");
-        // onYouTubeIframeAPIReady が呼ばれる
+        log("YouTube API の読み込みを待機中...");
+        // その後 onYouTubeIframeAPIReady が呼ばれる
       }
     });
   </script>
