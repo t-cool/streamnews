@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>英語学習YouTubeプレーヤー</title>
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    h1 {
+      color: #2c3e50;
+      text-align: center;
+    }
+    .container {
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    #player {
+      width: 100%;
+      aspect-ratio: 16/9;
+      margin-bottom: 20px;
+      background-color: #000;
+    }
+    .control-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    label {
+      font-weight: bold;
+      color: #2c3e50;
+    }
+    input, select, button {
+      padding: 10px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      font-size: 16px;
+    }
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #2980b9;
+    }
+    button:disabled {
+      background-color: #95a5a6;
+      cursor: not-allowed;
+    }
+    .status {
+      background-color: #edf7ff;
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 15px;
+    }
+    .video-info {
+      margin-top: 15px;
+      padding: 10px;
+      background-color: #f9f9f9;
+      border-radius: 4px;
+    }
+    .debug-info {
+      margin-top: 15px;
+      padding: 10px;
+      background-color: #fff3cd;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    @media (max-width: 600px) {
+      body {
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>英語学習YouTubeプレーヤー</h1>
+  
+  <div class="container">
+    <div id="player"></div>
+    
+    <div class="video-info">
+      <h3>現在の動画: <span id="currentVideoTitle">未選択</span></h3>
+      <p>次の動画まで: <span id="countdown">-</span></p>
+    </div>
+    
+    <div class="control-panel">
+      <div class="form-group">
+        <label for="interval">再生間隔（秒）:</label>
+        <input type="number" id="interval" min="10" value="60">
+      </div>
+      
+      <div class="form-group">
+        <label for="videoCategory">カテゴリー:</label>
+        <select id="videoCategory">
+          <option value="pronunciation">発音練習</option>
+          <option value="conversation">日常会話</option>
+          <option value="business">ビジネス英語</option>
+          <option value="news">ニュース英語</option>
+          <option value="songs">英語の歌</option>
+        </select>
+      </div>
+      
+      <button id="startButton">開始</button>
+      <button id="stopButton" disabled>停止</button>
+      <button id="singleVideoButton">1つの動画を再生</button>
+      
+      <div class="status" id="statusMessage">
+        「開始」ボタンを押して学習を始めましょう！
+      </div>
+      
+      <div class="debug-info" id="debugInfo">
+        デバッグ情報がここに表示されます
+      </div>
+    </div>
+  </div>
+
+  <!-- YouTube APIの読み込み方法を修正 -->
+  <script>
+    // YouTube APIを動的に読み込む
+    var tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    var firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+  </script>
+  
+  <script>
+    // デバッグ用のログ関数
+    function log(message) {
+      const debugInfo = document.getElementById('debugInfo');
+      const timestamp = new Date().toLocaleTimeString();
+      debugInfo.innerHTML += `[${timestamp}] ${message}<br>`;
+      debugInfo.scrollTop = debugInfo.scrollHeight;
+      console.log(`[${timestamp}] ${message}`);
+    }
+    
+    // YouTubeプレーヤーの変数を初期化
+    let player = null;
+    let playerReady = false;
+    let timer;
+    let currentVideoIndex = 0;
+    let remainingTime = 0;
+    let countdownInterval;
+    
+    // カテゴリー別の動画ID
+    const videoLibrary = {
+      pronunciation: [
+        {id: 'QxQUapA-2w4', title: 'English Pronunciation Training'},
+        {id: 'A7L8zY9Z4c0', title: 'Difficult English Sounds'},
+        {id: 'VkIgJQdXVZ0', title: 'Tongue Twisters Practice'}
+      ],
+      conversation: [
+        {id: 'hj0vSvnCRCc', title: 'Basic English Conversations'},
+        {id: 'zmR_Fuq4XxI', title: 'Real Life English Dialogues'},
+        {id: 'vmxUYzpbFfE', title: 'Travel English Phrases'}
+      ],
+      business: [
+        {id: 'l5iXPr0g8rQ', title: 'Business Meeting Vocabulary'},
+        {id: 'puNo0sxC3XI', title: 'Email Writing Tips'},
+        {id: 'xmqFbbZs82M', title: 'Job Interview English'}
+      ],
+      news: [
+        {id: 'wLuNOWXw96c', title: 'CNN News Report'},
+        {id: 'NC1Bw-Kb9D0', title: 'BBC Learning English'},
+        {id: 'PsR9ko4QZfA', title: 'VOA Learning English'}
+      ],
+      songs: [
+        {id: 'ZbZSe6N_BXs', title: 'Happy - Pharrell Williams'},
+        {id: 'hT_nvWreIhg', title: 'Counting Stars - OneRepublic'},
+        {id: 'VDvr08sCPOc', title: 'Remember Me - Coco Soundtrack'}
+      ]
+    };
+    
+    // YouTube Player APIのコールバック - APIが読み込まれたら自動的に呼ばれる
+    function onYouTubeIframeAPIReady() {
+      log("YouTube IFrame API が準備完了しました");
+      
+      // プレーヤーを初期化
+      initializePlayer();
+    }
+    
+    // プレーヤーを初期化する関数
+    function initializePlayer() {
+      log("プレーヤーを初期化しています...");
+      
+      try {
+        player = new YT.Player('player', {
+          height: '390',
+          width: '640',
+          videoId: videoLibrary.pronunciation[0].id, // 初期動画を設定
+          playerVars: {
+            'playsinline': 1,
+            'controls': 1,
+            'rel': 0,
+            'autoplay': 0
+          },
+          events: {
+            'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange,
+            'onError': onPlayerError
+          }
+        });
+        
+        log("プレーヤーオブジェクトを作成しました");
+      } catch (error) {
+        log(`プレーヤー初期化エラー: ${error.message}`);
+        setTimeout(initializePlayer, 2000); // 2秒後に再試行
+      }
+    }
+    
+    // プレーヤーの準備ができたとき
+    function onPlayerReady(event) {
+      log("プレーヤーの準備ができました");
+      playerReady = true;
+      
+      // 動画をロードするだけで再生はしない
+      try {
+        player.cueVideoById(videoLibrary.pronunciation[0].id);
+        document.getElementById('currentVideoTitle').textContent = videoLibrary.pronunciation[0].title;
+        document.getElementById('statusMessage').textContent = "準備完了！開始ボタンを押して学習を始めましょう。";
+      } catch (error) {
+        log(`動画キュー中エラー: ${error.message}`);
+      }
+    }
+    
+    // エラーハンドラー
+    function onPlayerError(event) {
+      log(`プレーヤーエラー: ${event.data}`);
+      document.getElementById('statusMessage').textContent = `エラーが発生しました(コード: ${event.data})。別の動画を試します。`;
+      // エラーが発生したら別の動画を試す
+      setTimeout(playNextVideo, 2000);
+    }
+    
+    // プレーヤーの状態が変わったとき
+    function onPlayerStateChange(event) {
+      const states = {
+        '-1': '未開始',
+        '0': '終了',
+        '1': '再生中',
+        '2': '一時停止',
+        '3': 'バッファリング中',
+        '5': 'キュー済み'
+      };
+      log(`プレーヤーの状態が変更: ${states[event.data] || event.data}`);
+      
+      // 動画が終了したとき、次の動画を再生
+      if (event.data === YT.PlayerState.ENDED) {
+        playNextVideo();
+      }
+    }
+    
+    // ランダム再生を開始
+    function startRandomPlayback() {
+      if (!playerReady) {
+        log("プレーヤーがまだ準備できていません");
+        document.getElementById('statusMessage').textContent = "YouTubeプレーヤーの準備中です。しばらくお待ちください。";
+        return;
+      }
+      
+      const interval = parseInt(document.getElementById('interval').value);
+      
+      if (interval < 10) {
+        alert('再生間隔は最低10秒以上に設定してください。');
+        return;
+      }
+      
+      // ボタンの状態を切り替え
+      document.getElementById('startButton').disabled = true;
+      document.getElementById('stopButton').disabled = false;
+      document.getElementById('singleVideoButton').disabled = true;
+      document.getElementById('interval').disabled = true;
+      document.getElementById('videoCategory').disabled = true;
+      
+      // 最初の動画を再生
+      playNextVideo();
+      
+      // ステータスメッセージを更新
+      document.getElementById('statusMessage').textContent = '英語学習中...';
+    }
+    
+    // 再生を停止
+    function stopPlayback() {
+      if (timer) clearTimeout(timer);
+      if (countdownInterval) clearInterval(countdownInterval);
+      
+      // ボタンの状態を切り替え
+      document.getElementById('startButton').disabled = false;
+      document.getElementById('stopButton').disabled = true;
+      document.getElementById('singleVideoButton').disabled = false;
+      document.getElementById('interval').disabled = false;
+      document.getElementById('videoCategory').disabled = false;
+      
+      // 動画を停止（プレーヤーが存在する場合のみ）
+      if (playerReady) {
+        try {
+          player.stopVideo();
+        } catch (error) {
+          log(`停止エラー: ${error.message}`);
+        }
+      }
+      
+      // ステータスと表示をリセット
+      document.getElementById('statusMessage').textContent = '停止しました。「開始」ボタンで再開できます。';
+      document.getElementById('countdown').textContent = '-';
+    }
+    
+    // 1つの動画だけ再生
+    function playSingleVideo() {
+      if (!playerReady) {
+        log("プレーヤーがまだ準備できていません");
+        document.getElementById('statusMessage').textContent = "YouTubeプレーヤーの準備中です。しばらくお待ちください。";
+        return;
+      }
+      
+      const category = document.getElementById('videoCategory').value;
+      const videos = videoLibrary[category];
+      const videoIndex = Math.floor(Math.random() * videos.length);
+      const video = videos[videoIndex];
+      
+      log(`単一動画再生: ${video.title} (ID: ${video.id})`);
+      
+      try {
+        // 動画を読み込んで再生
+        player.loadVideoById(video.id);
+        document.getElementById('currentVideoTitle').textContent = video.title;
+        document.getElementById('statusMessage').textContent = `再生中: ${video.title}`;
+      } catch (error) {
+        log(`単一動画再生エラー: ${error.message}`);
+        document.getElementById('statusMessage').textContent = "動画再生中にエラーが発生しました。";
+      }
+    }
+    
+    // 次の動画を再生
+    function playNextVideo() {
+      if (!playerReady) {
+        log("プレーヤーがまだ準備できていません");
+        document.getElementById('statusMessage').textContent = "YouTubeプレーヤーの準備中です。しばらくお待ちください。";
+        return;
+      }
+      
+      // 前のタイマーをクリア
+      if (timer) clearTimeout(timer);
+      if (countdownInterval) clearInterval(countdownInterval);
+      
+      const category = document.getElementById('videoCategory').value;
+      const videos = videoLibrary[category];
+      
+      // ランダムに動画を選択（前と同じにならないように）
+      let newIndex;
+      do {
+        newIndex = Math.floor(Math.random() * videos.length);
+      } while (videos.length > 1 && newIndex === currentVideoIndex);
+      
+      currentVideoIndex = newIndex;
+      const video = videos[currentVideoIndex];
+      
+      log(`次の動画再生: ${video.title} (ID: ${video.id})`);
+      
+      try {
+        // 動画を読み込んで再生
+        player.loadVideoById(video.id);
+        document.getElementById('currentVideoTitle').textContent = video.title;
+        
+        // 次の動画のためのタイマーを設定
+        const interval = parseInt(document.getElementById('interval').value);
+        remainingTime = interval;
+        updateCountdown();
+        
+        timer = setTimeout(playNextVideo, interval * 1000);
+        
+        // カウントダウン表示を更新
+        countdownInterval = setInterval(updateCountdown, 1000);
+      } catch (error) {
+        log(`動画再生エラー: ${error.message}`);
+        document.getElementById('statusMessage').textContent = "動画再生中にエラーが発生しました。再試行しています...";
+        setTimeout(playNextVideo, 2000);
+      }
+    }
+    
+    // カウントダウン表示を更新
+    function updateCountdown() {
+      document.getElementById('countdown').textContent = remainingTime + '秒';
+      remainingTime--;
+      
+      if (remainingTime < 0) {
+        clearInterval(countdownInterval);
+      }
+    }
+    
+    // ページ読み込み完了時に実行
+    document.addEventListener('DOMContentLoaded', function() {
+      log("ページが読み込まれました");
+      
+      // ボタンのイベントリスナーを設定
+      document.getElementById('startButton').addEventListener('click', startRandomPlayback);
+      document.getElementById('stopButton').addEventListener('click', stopPlayback);
+      document.getElementById('singleVideoButton').addEventListener('click', playSingleVideo);
+      
+      // YouTube API が既に読み込まれているか確認
+      if (typeof YT !== 'undefined' && YT.Player) {
+        log("YouTube API は既に読み込まれています");
+        initializePlayer();
+      } else {
+        log("YouTube API の読み込みを待っています...");
+        // onYouTubeIframeAPIReady が呼ばれる
+      }
+    });
+  </script>
+</body>
+</html>
